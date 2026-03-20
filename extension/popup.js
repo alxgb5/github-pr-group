@@ -68,7 +68,7 @@ async function loadState() {
   }
 
   // Nombre de PRs
-  prCountEl.textContent = prCount != null ? prCount : '—';
+  prCountEl.textContent = prCount !== null && prCount !== undefined ? prCount : '—';
 
   // Rate limit warning
   const nowSeconds = Math.floor(Date.now() / 1000);

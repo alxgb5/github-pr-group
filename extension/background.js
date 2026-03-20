@@ -88,7 +88,9 @@ function repoFromHtmlUrl(htmlUrl) {
     const parts = new URL(htmlUrl).pathname.split('/').filter(Boolean);
     // ['owner', 'repo', 'pull', '123']
     if (parts.length >= 2) return `${parts[0]}/${parts[1]}`.toLowerCase();
-  } catch {}
+  } catch (e) {
+    // Invalid URL — return null
+  }
   return null;
 }
 
