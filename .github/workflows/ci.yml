@@ -207,8 +207,6 @@ jobs:
         uses: github/codeql-action/init@bd726e2a6ef9fb1305ebd28a690e459525916958 # v3.29.1
         with:
           languages: javascript
-          # No build needed — vanilla JS, no compilation step
-          build-mode: none
 
       - name: 🔒 Run CodeQL analysis
         uses: github/codeql-action/analyze@bd726e2a6ef9fb1305ebd28a690e459525916958 # v3.29.1
