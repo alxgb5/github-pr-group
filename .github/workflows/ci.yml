@@ -1,0 +1,320 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 1 — Validate manifest.json
+  # ────────────────────────────────────────────────────────────────────────────
+  validate-manifest:
+    name: ✅ Validate Manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+
+    steps:
+      - name: ✅ Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: ✅ Validate JSON syntax
+        run: |
+          node -e "
+            const fs = require('fs');
+            const raw = fs.readFileSync('extension/manifest.json', 'utf8');
+            try {
+              JSON.parse(raw);
+              console.log('✅ manifest.json is valid JSON');
+            } catch (e) {
+              console.error('❌ Invalid JSON in manifest.json:', e.message);
+              process.exit(1);
+            }
+          "
+
+      - name: ✅ Check required fields and values
+        run: |
+          node -e "
+            const manifest = JSON.parse(
+              require('fs').readFileSync('extension/manifest.json', 'utf8')
+            );
+            const errors = [];
+
+            if (manifest.manifest_version !== 3) {
+              errors.push(
+                'manifest_version must be exactly 3, got: ' + manifest.manifest_version
+              );
+            }
+            for (const field of ['name', 'version']) {
+              if (!manifest[field]) errors.push('Missing required field: ' + field);
+            }
+            if (!manifest.background?.service_worker) {
+              errors.push(
+                'Missing background.service_worker (required for MV3 service workers)'
+              );
+            }
+            if (
+              !Array.isArray(manifest.permissions) ||
+              manifest.permissions.length === 0
+            ) {
+              errors.push('permissions must be a non-empty array');
+            }
+            if (!manifest.host_permissions) {
+              errors.push('Missing host_permissions');
+            }
+
+            if (errors.length > 0) {
+              errors.forEach(e => console.error('❌ ' + e));
+              process.exit(1);
+            }
+            console.log('✅ All required fields are present and valid');
+          "
+
+      - name: ✅ Check declared permissions against allowlist
+        run: |
+          node -e "
+            const manifest = JSON.parse(
+              require('fs').readFileSync('extension/manifest.json', 'utf8')
+            );
+            const ALLOWED = new Set(['tabs', 'tabGroups', 'storage', 'alarms']);
+            const declared = manifest.permissions ?? [];
+            const illegal  = declared.filter(p => !ALLOWED.has(p));
+
+            if (illegal.length > 0) {
+              console.error('❌ Unexpected permissions found: ' + illegal.join(', '));
+              console.error(
+                '   Allowed set: ' + [...ALLOWED].join(', ')
+              );
+              process.exit(1);
+            }
+            console.log('✅ Permissions OK: ' + declared.join(', '));
+          "
+
+      - name: ✅ Extract version from manifest
+        id: version
+        run: |
+          VERSION=$(node -e "
+            const m = JSON.parse(
+              require('fs').readFileSync('extension/manifest.json', 'utf8')
+            );
+            console.log(m.version);
+          ")
+          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "📦 Extension version: ${VERSION}"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 2 — ESLint
+  # ────────────────────────────────────────────────────────────────────────────
+  lint:
+    name: 🔍 Lint
+    needs: validate-manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 🔍 Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: 🔍 Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: "20"
+
+      - name: 🔍 Bootstrap package.json with ESM support
+        run: echo '{"type":"module"}' > package.json
+
+      - name: 🔍 Install ESLint and plugins
+        run: npm install --save-dev eslint @eslint/js globals
+
+      - name: 🔍 Write ESLint flat config
+        run: |
+          cat > eslint.config.js << 'ESLINTEOF'
+          import js from '@eslint/js';
+          import globals from 'globals';
+
+          export default [
+            js.configs.recommended,
+            {
+              files: ['extension/**/*.js'],
+              languageOptions: {
+                ecmaVersion: 2022,
+                sourceType: 'script', // MV3 service workers are classic scripts
+                globals: {
+                  ...globals.browser,
+                  chrome: 'readonly', // Chrome extension API
+                },
+              },
+              rules: {
+                'no-unused-vars': 'warn',
+                'no-undef':       'error',
+                'no-console':     'off',
+                'eqeqeq':         'error',
+                'prefer-const':   'error',
+              },
+            },
+          ];
+          ESLINTEOF
+
+      - name: 🔍 Run ESLint — generate JSON report
+        # Allow failure here so the artifact is always produced
+        run: |
+          npx eslint \
+            extension/background.js \
+            extension/options.js \
+            extension/popup.js \
+            --format json \
+            --output-file eslint-report.json \
+          || true
+
+      - name: 🔍 Run ESLint — human-readable (enforced)
+        # This step determines the job's pass/fail status
+        run: |
+          npx eslint \
+            extension/background.js \
+            extension/options.js \
+            extension/popup.js
+
+      - name: 🔍 Upload ESLint report as artifact
+        if: always() # Upload even when linting fails
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: eslint-report
+          path: eslint-report.json
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 3 — CodeQL security scan (parallel with lint)
+  # ────────────────────────────────────────────────────────────────────────────
+  security-scan:
+    name: 🔒 Security Scan
+    needs: validate-manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 🔒 Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: 🔒 Initialize CodeQL
+        uses: github/codeql-action/init@cdcdbb579706841c47f7063dda365e292e5cad7a # v3.26.0
+        with:
+          languages: javascript
+          # No build needed — vanilla JS, no compilation step
+          build-mode: none
+
+      - name: 🔒 Run CodeQL analysis
+        uses: github/codeql-action/analyze@cdcdbb579706841c47f7063dda365e292e5cad7a # v3.26.0
+        with:
+          category: "/language:javascript"
+
+      - name: 🔒 Check for dangerous permissions in manifest
+        run: |
+          node -e "
+            const manifest = JSON.parse(
+              require('fs').readFileSync('extension/manifest.json', 'utf8')
+            );
+            const DANGEROUS = [
+              'clipboardRead',
+              'history',
+              'bookmarks',
+              'nativeMessaging',
+              'debugger',
+            ];
+            const allPerms = [
+              ...(manifest.permissions          ?? []),
+              ...(manifest.optional_permissions ?? []),
+            ];
+            let found = false;
+            for (const perm of DANGEROUS) {
+              if (allPerms.includes(perm)) {
+                // Emit a GitHub warning annotation
+                console.log(
+                  '::warning file=extension/manifest.json::Dangerous permission declared: ' + perm
+                );
+                found = true;
+              }
+            }
+            if (!found) {
+              console.log('🔒 No dangerous permissions found');
+            }
+          "
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 4 — Build and verify the production zip
+  # ────────────────────────────────────────────────────────────────────────────
+  build-artifact:
+    name: 📦 Build Artifact
+    needs: [validate-manifest, lint, security-scan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: 📦 Create production zip
+        run: |
+          VERSION="${{ needs.validate-manifest.outputs.version }}"
+          ZIP_NAME="github-pr-group-${VERSION}.zip"
+
+          zip -r "${ZIP_NAME}" . \
+            -x ".git/*"      \
+            -x ".github/*"   \
+            -x "*.md"        \
+            -x "tests/*"     \
+            -x ".DS_Store"   \
+            -x "docs/*"      \
+            -x "node_modules/*" \
+            -x "package.json"   \
+            -x "package-lock.json" \
+            -x "eslint.config.js"
+
+          echo "ZIP_NAME=${ZIP_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}"   >> "$GITHUB_ENV"
+          echo "📦 Created: ${ZIP_NAME}"
+
+      - name: 📦 Verify zip is under 10 MB (Chrome Web Store limit)
+        run: |
+          SIZE=$(stat -c%s "${ZIP_NAME}")
+          SIZE_MB=$(echo "scale=2; ${SIZE} / 1048576" | bc)
+          echo "📦 Zip size: ${SIZE_MB} MB (${SIZE} bytes)"
+
+          if [ "${SIZE}" -gt 10485760 ]; then
+            echo "❌ Zip exceeds the 10 MB Chrome Web Store limit (${SIZE_MB} MB)"
+            exit 1
+          fi
+          echo "✅ Size OK: ${SIZE_MB} MB"
+          echo "ZIP_SIZE_MB=${SIZE_MB}" >> "$GITHUB_ENV"
+
+      - name: 📦 Upload zip as GitHub artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: github-pr-group-${{ needs.validate-manifest.outputs.version }}
+          path: ${{ env.ZIP_NAME }}
+          # 7 days for PRs, 30 days for pushes to main
+          retention-days: ${{ github.event_name == 'pull_request' && 7 || 30 }}
+
+      - name: 📦 Write job summary
+        run: |
+          echo "## 📦 Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Version** | \`${VERSION}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Zip file** | \`${ZIP_NAME}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Size** | ${ZIP_SIZE_MB} MB |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 📂 Files included in zip" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          unzip -l "${ZIP_NAME}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

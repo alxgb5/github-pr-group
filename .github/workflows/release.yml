@@ -1,0 +1,325 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 1 — Validate the tag and manifest version consistency
+  # ────────────────────────────────────────────────────────────────────────────
+  validate-version:
+    name: ✅ Validate Version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version:     ${{ steps.parse.outputs.version }}
+      is_prerelease: ${{ steps.parse.outputs.is_prerelease }}
+
+    steps:
+      - name: ✅ Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0 # full history needed for changelog diff
+
+      - name: ✅ Parse and validate tag format (vX.Y.Z strict SemVer)
+        id: parse
+        run: |
+          TAG="${{ github.ref_name }}"
+
+          # Strict SemVer — vMAJOR.MINOR.PATCH with optional pre-release suffix
+          if ! echo "${TAG}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$'; then
+            echo "❌ Tag '${TAG}' does not match vX.Y.Z (strict SemVer)"
+            echo "   Examples of valid tags: v1.0.0, v1.2.3-beta.1, v2.0.0-rc.3"
+            exit 1
+          fi
+          echo "✅ Tag format is valid: ${TAG}"
+
+          # Strip leading 'v' to get bare version (e.g. 1.2.3)
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+          # Detect pre-release (contains -alpha, -beta, or -rc)
+          if echo "${TAG}" | grep -qE '-(alpha|beta|rc)'; then
+            echo "is_prerelease=true"  >> "$GITHUB_OUTPUT"
+            echo "⚠️  Pre-release detected"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: ✅ Verify manifest.json version matches tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          EXPECTED="${{ steps.parse.outputs.version }}"
+          MANIFEST_VERSION=$(node -e "
+            const m = JSON.parse(
+              require('fs').readFileSync('extension/manifest.json', 'utf8')
+            );
+            console.log(m.version);
+          ")
+
+          if [ "${MANIFEST_VERSION}" != "${EXPECTED}" ]; then
+            echo "❌ Tag ${TAG} does not match version in manifest.json"
+            echo "   Tag version:      ${EXPECTED}"
+            echo "   Manifest version: ${MANIFEST_VERSION}"
+            echo ""
+            echo "   Fix: update the 'version' field in extension/manifest.json to '${EXPECTED}'"
+            exit 1
+          fi
+          echo "✅ Tag ${TAG} matches manifest.json version ${MANIFEST_VERSION}"
+
+      - name: ✅ Check that this release does not already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          HTTP_STATUS=$(
+            gh api "repos/${{ github.repository }}/releases/tags/${TAG}" \
+              --silent -o /dev/null -w "%{http_code}" 2>/dev/null \
+            || echo "404"
+          )
+          if [ "${HTTP_STATUS}" = "200" ]; then
+            echo "❌ A GitHub Release for tag '${TAG}' already exists."
+            echo "   Delete it first or use a different tag."
+            exit 1
+          fi
+          echo "✅ No existing release found for ${TAG} — proceeding"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 2 — Build the release zip and compute its checksum
+  # ────────────────────────────────────────────────────────────────────────────
+  build-release:
+    name: 📦 Build Release
+    needs: validate-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      sha256: ${{ steps.checksum.outputs.sha256 }}
+      zip_name: ${{ steps.zip.outputs.zip_name }}
+
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: 📦 Create release zip
+        id: zip
+        run: |
+          TAG="${{ github.ref_name }}"
+          ZIP_NAME="github-pr-group-${TAG}.zip"
+
+          zip -r "${ZIP_NAME}" . \
+            -x ".git/*"            \
+            -x ".github/*"         \
+            -x "*.md"              \
+            -x "tests/*"           \
+            -x ".DS_Store"         \
+            -x "docs/*"            \
+            -x "node_modules/*"    \
+            -x "package.json"      \
+            -x "package-lock.json" \
+            -x "eslint.config.js"
+
+          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          echo "📦 Created: ${ZIP_NAME}"
+          echo ""
+          echo "Contents:"
+          unzip -l "${ZIP_NAME}"
+
+      - name: 📦 Compute SHA256 checksum
+        id: checksum
+        run: |
+          ZIP_NAME="${{ steps.zip.outputs.zip_name }}"
+          SHA=$(sha256sum "${ZIP_NAME}" | awk '{print $1}')
+          echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "🔐 SHA256: ${SHA}  ${ZIP_NAME}"
+
+      - name: 📦 Upload zip as inter-job artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: release-zip
+          path: ${{ steps.zip.outputs.zip_name }}
+          retention-days: 1 # Only needed until create-github-release runs
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 3 — Create the GitHub Release
+  # ────────────────────────────────────────────────────────────────────────────
+  create-github-release:
+    name: 🚀 Create GitHub Release
+    needs: [validate-version, build-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 🚀 Checkout repository (for changelog)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: 🚀 Download release zip artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444306234f2b957d4a4adf2b # v4.1.8
+        with:
+          name: release-zip
+
+      - name: 🚀 Generate changelog from git log
+        id: changelog
+        run: |
+          TAG="${{ github.ref_name }}"
+
+          # Find the previous release tag (latest vX.Y.Z before this one)
+          PREV_TAG=$(
+            git tag --sort=-version:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | grep -v "^${TAG}$" \
+            | head -n 1
+          )
+
+          if [ -z "${PREV_TAG}" ]; then
+            echo "ℹ️  No previous release tag found — listing all commits"
+            RANGE="HEAD"
+          else
+            echo "📋 Comparing ${PREV_TAG}..${TAG}"
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+
+          # Collect commits, skip merge commits
+          COMMITS=$(git log ${RANGE} --oneline --no-merges)
+
+          # Group by conventional commit prefix
+          FEAT=""
+          FIX=""
+          CHORE=""
+          OTHER=""
+
+          while IFS= read -r line; do
+            # Strip the short SHA prefix
+            MSG="${line#* }"
+            if echo "${MSG}" | grep -qiE '^feat(\(.+\))?[!:]'; then
+              FEAT="${FEAT}\n- ${MSG}"
+            elif echo "${MSG}" | grep -qiE '^fix(\(.+\))?[!:]'; then
+              FIX="${FIX}\n- ${MSG}"
+            elif echo "${MSG}" | grep -qiE '^(chore|ci|docs|refactor|perf|style|test)(\(.+\))?[!:]'; then
+              CHORE="${CHORE}\n- ${MSG}"
+            elif [ -n "${MSG}" ]; then
+              OTHER="${OTHER}\n- ${MSG}"
+            fi
+          done <<< "${COMMITS}"
+
+          # Build the changelog markdown section
+          CHANGELOG=""
+          if [ -n "${FEAT}" ];  then CHANGELOG="${CHANGELOG}\n### ✨ New features\n${FEAT}\n"; fi
+          if [ -n "${FIX}" ];   then CHANGELOG="${CHANGELOG}\n### 🐛 Bug fixes\n${FIX}\n";    fi
+          if [ -n "${CHORE}" ]; then CHANGELOG="${CHANGELOG}\n### 🔧 Maintenance\n${CHORE}\n"; fi
+          if [ -n "${OTHER}" ]; then CHANGELOG="${CHANGELOG}\n### 📝 Other changes\n${OTHER}\n"; fi
+
+          if [ -z "${CHANGELOG}" ]; then
+            CHANGELOG="\n_No changes listed — commits may not follow Conventional Commits._\n"
+          fi
+
+          # Write to file (avoids multi-line env var quoting issues)
+          printf "%b" "${CHANGELOG}" > changelog.md
+          cat changelog.md
+
+          # Store prev tag for the release notes
+          echo "prev_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: 🚀 Write release body
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          ZIP_NAME="${{ needs.build-release.outputs.zip_name }}"
+          SHA256="${{ needs.build-release.outputs.sha256 }}"
+          PREV_TAG="${{ steps.changelog.outputs.prev_tag }}"
+
+          COMPARE_URL=""
+          if [ -n "${PREV_TAG}" ]; then
+            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}"
+          fi
+
+          cat > release-body.md << BODY
+          ## Installation
+
+          1. Download \`${ZIP_NAME}\` below
+          2. Unzip the archive
+          3. Open \`chrome://extensions\` — enable **Developer mode**
+          4. Click **Load unpacked** → select the unzipped folder
+          5. Open the extension **Options** and enter your GitHub username + PAT
+
+          ## Checksums
+
+          | File | SHA256 |
+          |---|---|
+          | \`${ZIP_NAME}\` | \`${SHA256}\` |
+
+          ## Changelog
+          BODY
+
+          cat changelog.md >> release-body.md
+
+          if [ -n "${COMPARE_URL}" ]; then
+            echo "" >> release-body.md
+            echo "**Full diff:** [${PREV_TAG}...${TAG}](${COMPARE_URL})" >> release-body.md
+          fi
+
+          echo "📝 Release body:"
+          cat release-body.md
+
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@da05d552573ad5aba039d10c1fdec456fa58e27a # v2.2.1
+        with:
+          tag_name:   ${{ github.ref_name }}
+          name:       "GitHub PR Group ${{ github.ref_name }}"
+          body_path:  release-body.md
+          files:      ${{ needs.build-release.outputs.zip_name }}
+          draft:      false
+          prerelease: ${{ needs.validate-version.outputs.is_prerelease == 'true' }}
+          token:      ${{ secrets.GITHUB_TOKEN }}
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 4 — Post-release health check and summary
+  # ────────────────────────────────────────────────────────────────────────────
+  post-release-checks:
+    name: 🚀 Post-release Checks
+    needs: [validate-version, create-github-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 🚀 Verify release was created successfully
+        id: verify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          RELEASE_URL=$(
+            gh api "repos/${{ github.repository }}/releases/tags/${TAG}" \
+              --jq '.html_url'
+          )
+          if [ -z "${RELEASE_URL}" ]; then
+            echo "❌ Could not retrieve the release URL for tag ${TAG}"
+            exit 1
+          fi
+          echo "✅ Release confirmed: ${RELEASE_URL}"
+          echo "release_url=${RELEASE_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: 🚀 Write success summary
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          RELEASE_URL="${{ steps.verify.outputs.release_url }}"
+
+          echo "## 🚀 Release ${TAG} published successfully" >> "$GITHUB_STEP_SUMMARY"
+          echo ""                                            >> "$GITHUB_STEP_SUMMARY"
+          echo "| Property | Value |"                       >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|"                                   >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Tag** | \`${TAG}\` |"                   >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Version** | \`${VERSION}\` |"           >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Pre-release** | ${{ needs.validate-version.outputs.is_prerelease }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Release URL** | [${RELEASE_URL}](${RELEASE_URL}) |" >> "$GITHUB_STEP_SUMMARY"
+          echo ""                                            >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ **[View Release →](${RELEASE_URL})**"    >> "$GITHUB_STEP_SUMMARY"
