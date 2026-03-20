@@ -7,7 +7,7 @@ No build step required. The files in `extension/` are directly loadable in Chrom
 ```bash
 git clone https://github.com/alxgb5/github-pr-group
 cd github-pr-group
-npm install          # installs ESLint only — no runtime dependencies
+npm ci               # installs ESLint + Prettier — no runtime dependencies
 ```
 
 ### Load the extension in Chrome
@@ -23,6 +23,21 @@ npm install          # installs ESLint only — no runtime dependencies
 npm run lint         # check
 npm run lint:fix     # auto-fix
 ```
+
+### Format (Prettier)
+
+```bash
+npm run format       # auto-fix
+npm run format:check # check only (used in CI)
+```
+
+### Tests
+
+```bash
+npm test             # runs tests/utils.test.js via node:test (no dependencies)
+```
+
+Pure utility functions live in `extension/utils.js` and are unit-tested. All extension scripts are ES modules (`import`/`export`).
 
 ---
 
@@ -55,7 +70,7 @@ ci: bump checkout action to v6
 ## Pull Request process
 
 1. Branch from `main`
-2. Make your changes and run `npm run lint`
+2. Make your changes and run `npm run lint`, `npm run format:check`, `npm test`
 3. Update `CHANGELOG.md` under `[Unreleased]`
 4. If the change is user-facing, bump the version in `extension/manifest.json`
 5. Open a PR — the CI will run automatically
