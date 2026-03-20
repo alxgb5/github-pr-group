@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" fill="#1f883d"/>
+  <!-- Drop shadow layer -->
+  <rect width="128" height="128" rx="24" fill="url(#grad)" opacity="0.15"/>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#000"/>
+    </linearGradient>
+  </defs>
+  <!-- PR icon: left branch (author) -->
+  <circle cx="36" cy="36" r="12" fill="#fff"/>
+  <line x1="36" y1="48" x2="36" y2="80" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="36" cy="92" r="12" fill="#fff"/>
+  <!-- PR icon: right branch (review) -->
+  <circle cx="92" cy="64" r="12" fill="#fff"/>
+  <line x1="92" y1="52" x2="92" y2="36" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+  <path d="M77 50 L92 32 L107 50" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Connector -->
+  <path d="M48 64 Q64 64 80 64" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round"/>
+</svg>
