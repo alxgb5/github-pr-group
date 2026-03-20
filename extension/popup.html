@@ -1,165 +1,184 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <title>GitHub PR Group</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <head>
+    <meta charset="UTF-8" />
+    <title>GitHub PR Group</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 13px;
-      color: #24292f;
-      background: #fff;
-      width: 280px;
-      padding: 16px;
-    }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 13px;
+        color: #24292f;
+        background: #fff;
+        width: 280px;
+        padding: 16px;
+      }
 
-    header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 14px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #d0d7de;
-    }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #d0d7de;
+      }
 
-    header img { width: 20px; height: 20px; }
+      header img {
+        width: 20px;
+        height: 20px;
+      }
 
-    header h1 {
-      font-size: 14px;
-      font-weight: 600;
-    }
+      header h1 {
+        font-size: 14px;
+        font-weight: 600;
+      }
 
-    .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
 
-    .label {
-      color: #57606a;
-      font-size: 12px;
-    }
+      .label {
+        color: #57606a;
+        font-size: 12px;
+      }
 
-    .value {
-      font-weight: 500;
-      font-size: 12px;
-      text-align: right;
-    }
+      .value {
+        font-weight: 500;
+        font-size: 12px;
+        text-align: right;
+      }
 
-    .value.connected { color: #1a7f37; }
-    .value.not-configured { color: #cf222e; }
-    .value.warning { color: #9a6700; }
+      .value.connected {
+        color: #1a7f37;
+      }
+      .value.not-configured {
+        color: #cf222e;
+      }
+      .value.warning {
+        color: #9a6700;
+      }
 
-    .divider {
-      height: 1px;
-      background: #d0d7de;
-      margin: 12px 0;
-    }
+      .divider {
+        height: 1px;
+        background: #d0d7de;
+        margin: 12px 0;
+      }
 
-    #rateLimitWarning {
-      background: #fff8c5;
-      border: 1px solid #d4a72c;
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 12px;
-      color: #9a6700;
-      margin-bottom: 12px;
-      display: none;
-    }
+      #rateLimitWarning {
+        background: #fff8c5;
+        border: 1px solid #d4a72c;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-size: 12px;
+        color: #9a6700;
+        margin-bottom: 12px;
+        display: none;
+      }
 
-    .actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
 
-    button {
-      width: 100%;
-      padding: 7px 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid;
-      text-align: center;
-      transition: background 0.15s;
-    }
+      button {
+        width: 100%;
+        padding: 7px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid;
+        text-align: center;
+        transition: background 0.15s;
+      }
 
-    .btn-primary {
-      background: #1f883d;
-      border-color: #1a7f37;
-      color: #fff;
-    }
-    .btn-primary:hover:not(:disabled) { background: #1a7f37; }
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+      .btn-primary {
+        background: #1f883d;
+        border-color: #1a7f37;
+        color: #fff;
+      }
+      .btn-primary:hover:not(:disabled) {
+        background: #1a7f37;
+      }
+      .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
 
-    .btn-secondary {
-      background: #f6f8fa;
-      border-color: #d0d7de;
-      color: #24292f;
-    }
-    .btn-secondary:hover { background: #eaeef2; }
+      .btn-secondary {
+        background: #f6f8fa;
+        border-color: #d0d7de;
+        color: #24292f;
+      }
+      .btn-secondary:hover {
+        background: #eaeef2;
+      }
 
-    #syncStatus {
-      font-size: 11px;
-      color: #57606a;
-      text-align: center;
-      margin-top: 6px;
-      min-height: 16px;
-    }
+      #syncStatus {
+        font-size: 11px;
+        color: #57606a;
+        text-align: center;
+        margin-top: 6px;
+        min-height: 16px;
+      }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: #0969da;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 600;
-      border-radius: 10px;
-      padding: 1px 7px;
-      min-width: 22px;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <img src="icons/icon48.png" alt="" />
-    <h1>GitHub PR Group</h1>
-  </header>
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #0969da;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 1px 7px;
+        min-width: 22px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="icons/icon48.png" alt="" />
+      <h1>GitHub PR Group</h1>
+    </header>
 
-  <div id="rateLimitWarning"></div>
+    <div id="rateLimitWarning"></div>
 
-  <div class="row">
-    <span class="label">Statut</span>
-    <span class="value" id="statusValue">Chargement…</span>
-  </div>
+    <div class="row">
+      <span class="label">Statut</span>
+      <span class="value" id="statusValue">Chargement…</span>
+    </div>
 
-  <div class="row">
-    <span class="label">Dernière sync</span>
-    <span class="value" id="lastSync">—</span>
-  </div>
+    <div class="row">
+      <span class="label">Dernière sync</span>
+      <span class="value" id="lastSync">—</span>
+    </div>
 
-  <div class="row">
-    <span class="label">PRs dans le groupe</span>
-    <span class="value"><span class="badge" id="prCount">—</span></span>
-  </div>
+    <div class="row">
+      <span class="label">PRs dans le groupe</span>
+      <span class="value"><span class="badge" id="prCount">—</span></span>
+    </div>
 
-  <div class="divider"></div>
+    <div class="divider"></div>
 
-  <div class="actions">
-    <button class="btn-primary" id="btnSync">Synchroniser maintenant</button>
-    <button class="btn-secondary" id="btnOptions">Ouvrir les options</button>
-  </div>
+    <div class="actions">
+      <button class="btn-primary" id="btnSync">Synchroniser maintenant</button>
+      <button class="btn-secondary" id="btnOptions">Ouvrir les options</button>
+    </div>
 
-  <div id="syncStatus"></div>
+    <div id="syncStatus"></div>
 
-  <script src="popup.js"></script>
-</body>
+    <script type="module" src="popup.js"></script>
+  </body>
 </html>

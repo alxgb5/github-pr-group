@@ -1,346 +1,451 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GitHub PR Group — Options</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub PR Group — Options</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 14px;
-      color: #24292f;
-      background: #f6f8fa;
-      min-height: 100vh;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 40px 16px;
-    }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+        color: #24292f;
+        background: #f6f8fa;
+        min-height: 100vh;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 40px 16px;
+      }
 
-    .card {
-      background: #fff;
-      border: 1px solid #d0d7de;
-      border-radius: 8px;
-      padding: 32px;
-      width: 100%;
-      max-width: 520px;
-      box-shadow: 0 1px 3px rgba(31,35,40,0.06);
-    }
+      .card {
+        background: #fff;
+        border: 1px solid #d0d7de;
+        border-radius: 8px;
+        padding: 32px;
+        width: 100%;
+        max-width: 520px;
+        box-shadow: 0 1px 3px rgba(31, 35, 40, 0.06);
+      }
 
-    h1 {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
 
-    h1 img { width: 28px; height: 28px; }
+      h1 img {
+        width: 28px;
+        height: 28px;
+      }
 
-    h2 {
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: #57606a;
-      margin: 28px 0 14px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid #d0d7de;
-    }
+      h2 {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #57606a;
+        margin: 28px 0 14px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #d0d7de;
+      }
 
-    .field {
-      margin-bottom: 18px;
-    }
+      .field {
+        margin-bottom: 18px;
+      }
 
-    label {
-      display: block;
-      font-weight: 500;
-      margin-bottom: 6px;
-      color: #24292f;
-    }
+      label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 6px;
+        color: #24292f;
+      }
 
-    input[type="text"],
-    input[type="password"],
-    textarea,
-    select {
-      width: 100%;
-      padding: 7px 12px;
-      border: 1px solid #d0d7de;
-      border-radius: 6px;
-      font-size: 14px;
-      color: #24292f;
-      background: #fff;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      font-family: inherit;
-    }
+      input[type='text'],
+      input[type='password'],
+      textarea,
+      select {
+        width: 100%;
+        padding: 7px 12px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        font-size: 14px;
+        color: #24292f;
+        background: #fff;
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s;
+        font-family: inherit;
+      }
 
-    textarea {
-      resize: vertical;
-      min-height: 72px;
-      line-height: 1.5;
-    }
+      textarea {
+        resize: vertical;
+        min-height: 72px;
+        line-height: 1.5;
+      }
 
-    input:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: #0969da;
-      box-shadow: 0 0 0 3px rgba(9,105,218,0.15);
-    }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: #0969da;
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+      }
 
-    .hint {
-      font-size: 12px;
-      color: #57606a;
-      margin-top: 5px;
-    }
+      .hint {
+        font-size: 12px;
+        color: #57606a;
+        margin-top: 5px;
+      }
 
-    .hint a {
-      color: #0969da;
-      text-decoration: none;
-    }
-    .hint a:hover { text-decoration: underline; }
+      .hint a {
+        color: #0969da;
+        text-decoration: none;
+      }
+      .hint a:hover {
+        text-decoration: underline;
+      }
 
-    .scope-info {
-      background: #ddf4ff;
-      border: 1px solid #54aeff;
-      border-radius: 6px;
-      padding: 10px 14px;
-      font-size: 12px;
-      color: #0550ae;
-      margin-bottom: 18px;
-    }
+      .scope-info {
+        background: #ddf4ff;
+        border: 1px solid #54aeff;
+        border-radius: 6px;
+        padding: 10px 14px;
+        font-size: 12px;
+        color: #0550ae;
+        margin-bottom: 18px;
+      }
 
-    .scope-info strong { font-weight: 600; }
+      .scope-info strong {
+        font-weight: 600;
+      }
 
-    /* Checkbox row */
-    .check-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 18px;
-    }
+      /* Checkbox row */
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
 
-    .check-row input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: #1f883d;
-      flex-shrink: 0;
-    }
+      .check-row input[type='checkbox'] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #1f883d;
+        flex-shrink: 0;
+      }
 
-    .check-row label {
-      margin-bottom: 0;
-      cursor: pointer;
-      font-weight: 400;
-    }
+      .check-row label {
+        margin-bottom: 0;
+        cursor: pointer;
+        font-weight: 400;
+      }
 
-    /* Dismissed section */
-    .dismissed-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #f6f8fa;
-      border: 1px solid #d0d7de;
-      border-radius: 6px;
-      padding: 10px 14px;
-    }
+      /* Dismissed section */
+      .dismissed-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f6f8fa;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        padding: 10px 14px;
+      }
 
-    .dismissed-label {
-      font-size: 13px;
-      color: #57606a;
-    }
+      .dismissed-label {
+        font-size: 13px;
+        color: #57606a;
+      }
 
-    .dismissed-count {
-      font-weight: 600;
-      color: #24292f;
-    }
+      .dismissed-count {
+        font-weight: 600;
+        color: #24292f;
+      }
 
-    .actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 24px;
-    }
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 24px;
+      }
 
-    button {
-      padding: 7px 16px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid;
-      transition: background 0.15s, border-color 0.15s;
-    }
+      button {
+        padding: 7px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+      }
 
-    .btn-primary {
-      background: #1f883d;
-      border-color: #1a7f37;
-      color: #fff;
-    }
-    .btn-primary:hover { background: #1a7f37; }
+      .btn-primary {
+        background: #1f883d;
+        border-color: #1a7f37;
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: #1a7f37;
+      }
 
-    .btn-secondary {
-      background: #f6f8fa;
-      border-color: #d0d7de;
-      color: #24292f;
-    }
-    .btn-secondary:hover { background: #eaeef2; }
+      .btn-secondary {
+        background: #f6f8fa;
+        border-color: #d0d7de;
+        color: #24292f;
+      }
+      .btn-secondary:hover {
+        background: #eaeef2;
+      }
 
-    .btn-danger {
-      background: #fff;
-      border-color: #cf222e;
-      color: #cf222e;
-      font-size: 12px;
-      padding: 5px 12px;
-    }
-    .btn-danger:hover { background: #ffebe9; }
-    .btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+      .btn-danger {
+        background: #fff;
+        border-color: #cf222e;
+        color: #cf222e;
+        font-size: 12px;
+        padding: 5px 12px;
+      }
+      .btn-danger:hover {
+        background: #ffebe9;
+      }
+      .btn-danger:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
 
-    #status {
-      margin-top: 16px;
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      display: none;
-    }
+      /* Dismissed list */
+      .dismissed-list {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
 
-    #status.success {
-      background: #dafbe1;
-      border: 1px solid #2da44e;
-      color: #1a7f37;
-      display: block;
-    }
+      .dismissed-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: #f6f8fa;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        padding: 7px 12px;
+      }
 
-    #status.error {
-      background: #ffebe9;
-      border: 1px solid #ff8182;
-      color: #cf222e;
-      display: block;
-    }
+      .dismissed-item-label {
+        font-size: 12px;
+        color: #57606a;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
 
-    #status.info {
-      background: #ddf4ff;
-      border: 1px solid #54aeff;
-      color: #0550ae;
-      display: block;
-    }
+      .dismissed-item-label strong {
+        color: #24292f;
+        font-weight: 500;
+      }
 
-    .color-grid {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 6px;
-    }
+      .dismissed-empty {
+        font-size: 12px;
+        color: #57606a;
+        text-align: center;
+        padding: 10px 0;
+      }
 
-    .color-dot {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: transform 0.1s, border-color 0.1s;
-    }
-    .color-dot:hover { transform: scale(1.15); }
-    .color-dot.selected { border-color: #24292f; }
+      #status {
+        margin-top: 16px;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        display: none;
+      }
 
-    .color-dot[data-color="blue"]   { background: #54aeff; }
-    .color-dot[data-color="red"]    { background: #ff8182; }
-    .color-dot[data-color="yellow"] { background: #d4a72c; }
-    .color-dot[data-color="green"]  { background: #2da44e; }
-    .color-dot[data-color="pink"]   { background: #e85aad; }
-    .color-dot[data-color="purple"] { background: #a475f9; }
-    .color-dot[data-color="cyan"]   { background: #218bff; }
-    .color-dot[data-color="orange"] { background: #bc4c00; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>
-      <img src="icons/icon48.png" alt="" />
-      GitHub PR Group — Options
-    </h1>
+      #status.success {
+        background: #dafbe1;
+        border: 1px solid #2da44e;
+        color: #1a7f37;
+        display: block;
+      }
 
-    <!-- ── Connexion ── -->
-    <h2>Connexion GitHub</h2>
+      #status.error {
+        background: #ffebe9;
+        border: 1px solid #ff8182;
+        color: #cf222e;
+        display: block;
+      }
 
-    <div class="field">
-      <label for="username">GitHub Username</label>
-      <input type="text" id="username" placeholder="votre-username" autocomplete="off" spellcheck="false" />
-    </div>
+      #status.info {
+        background: #ddf4ff;
+        border: 1px solid #54aeff;
+        color: #0550ae;
+        display: block;
+      }
 
-    <div class="field">
-      <label for="pat">Personal Access Token (PAT)</label>
-      <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off" />
-      <p class="hint">
-        Pas encore de token ?
-        <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">
-          Créer un token sur GitHub →
-        </a>
-      </p>
-    </div>
+      .color-grid {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
 
-    <div class="scope-info">
-      <strong>Scopes requis :</strong><br/>
-      • <code>public_repo</code> — pour les repos publics uniquement<br/>
-      • <code>repo</code> — pour inclure les repos privés<br/>
-      • <code>read:user</code> — pour vérifier la connexion
-    </div>
+      .color-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition:
+          transform 0.1s,
+          border-color 0.1s;
+      }
+      .color-dot:hover {
+        transform: scale(1.15);
+      }
+      .color-dot.selected {
+        border-color: #24292f;
+      }
 
-    <!-- ── Filtres ── -->
-    <h2>Filtres</h2>
+      .color-dot[data-color='blue'] {
+        background: #54aeff;
+      }
+      .color-dot[data-color='red'] {
+        background: #ff8182;
+      }
+      .color-dot[data-color='yellow'] {
+        background: #d4a72c;
+      }
+      .color-dot[data-color='green'] {
+        background: #2da44e;
+      }
+      .color-dot[data-color='pink'] {
+        background: #e85aad;
+      }
+      .color-dot[data-color='purple'] {
+        background: #a475f9;
+      }
+      .color-dot[data-color='cyan'] {
+        background: #218bff;
+      }
+      .color-dot[data-color='orange'] {
+        background: #bc4c00;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>
+        <img src="icons/icon48.png" alt="" />
+        GitHub PR Group — Options
+      </h1>
 
-    <div class="check-row">
-      <input type="checkbox" id="excludeDependabot" />
-      <label for="excludeDependabot">Masquer les PRs ouvertes par Dependabot</label>
-    </div>
+      <!-- ── Connexion ── -->
+      <h2>Connexion GitHub</h2>
 
-    <div class="field">
-      <label for="excludedRepos">Repos exclus</label>
-      <textarea
-        id="excludedRepos"
-        placeholder="owner/repo&#10;owner/autre-repo"
-        spellcheck="false"
-      ></textarea>
-      <p class="hint">Un repo par ligne, au format <code>owner/repo</code>. Les PRs de ces repos n'apparaîtront pas dans le groupe.</p>
-    </div>
-
-    <!-- ── PRs ignorées ── -->
-    <h2>PRs ignorées manuellement</h2>
-
-    <div class="dismissed-row">
-      <span class="dismissed-label">
-        PRs définitivement masquées : <span class="dismissed-count" id="dismissedCount">—</span>
-      </span>
-      <button class="btn-danger" id="btnClearDismissed">Tout réafficher</button>
-    </div>
-    <p class="hint" style="margin-top: 8px;">Quand vous fermez un onglet du groupe manuellement, la PR est définitivement ignorée. Cliquez "Tout réafficher" pour remettre à zéro.</p>
-
-    <!-- ── Apparence ── -->
-    <h2>Apparence</h2>
-
-    <div class="field">
-      <label>Couleur du groupe</label>
-      <div class="color-grid" id="colorGrid">
-        <div class="color-dot" data-color="blue" title="Blue"></div>
-        <div class="color-dot" data-color="red" title="Red"></div>
-        <div class="color-dot" data-color="yellow" title="Yellow"></div>
-        <div class="color-dot" data-color="green" title="Green"></div>
-        <div class="color-dot" data-color="pink" title="Pink"></div>
-        <div class="color-dot" data-color="purple" title="Purple"></div>
-        <div class="color-dot" data-color="cyan" title="Cyan"></div>
-        <div class="color-dot" data-color="orange" title="Orange"></div>
+      <div class="field">
+        <label for="username">GitHub Username</label>
+        <input
+          type="text"
+          id="username"
+          placeholder="votre-username"
+          autocomplete="off"
+          spellcheck="false"
+        />
       </div>
-      <input type="hidden" id="groupColor" value="blue" />
+
+      <div class="field">
+        <label for="pat">Personal Access Token (PAT)</label>
+        <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off" />
+        <p class="hint">
+          Pas encore de token ?
+          <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">
+            Créer un token sur GitHub →
+          </a>
+        </p>
+      </div>
+
+      <div class="scope-info">
+        <strong>Scopes requis :</strong><br />
+        • <code>public_repo</code> — pour les repos publics uniquement<br />
+        • <code>repo</code> — pour inclure les repos privés<br />
+        • <code>read:user</code> — pour vérifier la connexion
+      </div>
+
+      <!-- ── Filtres ── -->
+      <h2>Filtres</h2>
+
+      <div class="check-row">
+        <input type="checkbox" id="excludeDependabot" />
+        <label for="excludeDependabot">Masquer les PRs ouvertes par Dependabot</label>
+      </div>
+
+      <div class="field">
+        <label for="excludedRepos">Repos exclus</label>
+        <textarea
+          id="excludedRepos"
+          placeholder="owner/repo&#10;owner/autre-repo"
+          spellcheck="false"
+        ></textarea>
+        <p class="hint">
+          Un repo par ligne, au format <code>owner/repo</code>. Les PRs de ces repos n'apparaîtront
+          pas dans le groupe.
+        </p>
+      </div>
+
+      <!-- ── PRs ignorées ── -->
+      <h2>PRs ignorées manuellement</h2>
+
+      <div class="dismissed-row">
+        <span class="dismissed-label">
+          PRs définitivement masquées : <span class="dismissed-count" id="dismissedCount">—</span>
+        </span>
+        <button class="btn-danger" id="btnClearDismissed">Tout réafficher</button>
+      </div>
+
+      <div class="dismissed-list" id="dismissedList"></div>
+
+      <p class="hint" style="margin-top: 8px">
+        Quand vous fermez un onglet du groupe manuellement, la PR est définitivement ignorée.
+        Cliquez sur "Réafficher" pour la remettre dans le groupe à la prochaine sync.
+      </p>
+
+      <!-- ── Apparence ── -->
+      <h2>Apparence</h2>
+
+      <div class="field">
+        <label>Couleur du groupe</label>
+        <div class="color-grid" id="colorGrid">
+          <div class="color-dot" data-color="blue" title="Blue"></div>
+          <div class="color-dot" data-color="red" title="Red"></div>
+          <div class="color-dot" data-color="yellow" title="Yellow"></div>
+          <div class="color-dot" data-color="green" title="Green"></div>
+          <div class="color-dot" data-color="pink" title="Pink"></div>
+          <div class="color-dot" data-color="purple" title="Purple"></div>
+          <div class="color-dot" data-color="cyan" title="Cyan"></div>
+          <div class="color-dot" data-color="orange" title="Orange"></div>
+        </div>
+        <input type="hidden" id="groupColor" value="blue" />
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="btnSave">Sauvegarder</button>
+        <button class="btn-secondary" id="btnTest">Tester la connexion</button>
+      </div>
+
+      <div id="status"></div>
     </div>
 
-    <div class="actions">
-      <button class="btn-primary" id="btnSave">Sauvegarder</button>
-      <button class="btn-secondary" id="btnTest">Tester la connexion</button>
-    </div>
-
-    <div id="status"></div>
-  </div>
-
-  <script src="options.js"></script>
-</body>
+    <script type="module" src="options.js"></script>
+  </body>
 </html>

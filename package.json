@@ -5,13 +5,17 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "lint": "eslint extension/background.js extension/options.js extension/popup.js",
-    "lint:fix": "eslint extension/background.js extension/options.js extension/popup.js --fix",
-    "lint:report": "eslint extension/background.js extension/options.js extension/popup.js --format json --output-file eslint-report.json"
+    "lint": "eslint extension/background.js extension/options.js extension/popup.js extension/utils.js",
+    "lint:fix": "eslint extension/background.js extension/options.js extension/popup.js extension/utils.js --fix",
+    "lint:report": "eslint extension/background.js extension/options.js extension/popup.js extension/utils.js --format json --output-file eslint-report.json",
+    "format": "prettier --write \"extension/**/*.js\" \"extension/**/*.html\" \"tests/**/*.js\" \"*.json\" \"*.js\"",
+    "format:check": "prettier --check \"extension/**/*.js\" \"extension/**/*.html\" \"tests/**/*.js\" \"*.json\" \"*.js\"",
+    "test": "node --test tests/utils.test.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "eslint": "^9.0.0",
-    "globals": "^15.0.0"
+    "globals": "^15.0.0",
+    "prettier": "^3.0.0"
   }
 }

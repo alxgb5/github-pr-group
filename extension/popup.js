@@ -1,5 +1,7 @@
 // popup.js
 
+import { timeAgo } from './utils.js';
+
 const statusValue = document.getElementById('statusValue');
 const lastSyncEl = document.getElementById('lastSync');
 const prCountEl = document.getElementById('prCount');
@@ -10,42 +12,28 @@ const syncStatusEl = document.getElementById('syncStatus');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/**
- * Formate la durée écoulée depuis un timestamp en ms.
- * Ex: "il y a 2 min", "il y a 45 s", "il y a 1 h"
- */
-function timeAgo(timestampMs) {
-  if (!timestampMs) return '—';
-  const seconds = Math.floor((Date.now() - timestampMs) / 1000);
-  if (seconds < 10) return 'à l\'instant';
-  if (seconds < 60) return `il y a ${seconds} s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `il y a ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  return `il y a ${hours} h`;
-}
-
 function formatTime(unixSeconds) {
-  return new Date(unixSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return new Date(unixSeconds * 1000).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 // ─── Load state ───────────────────────────────────────────────────────────────
 
 async function loadState() {
-  const { githubUsername, githubPAT } = await chrome.storage.sync.get(['githubUsername', 'githubPAT']);
-  const {
-    lastSyncTimestamp,
-    lastSyncError,
-    prCount,
-    rateLimitBlocked,
-    rateLimitReset,
-  } = await chrome.storage.local.get([
-    'lastSyncTimestamp',
-    'lastSyncError',
-    'prCount',
-    'rateLimitBlocked',
-    'rateLimitReset',
+  const { githubUsername, githubPAT } = await chrome.storage.sync.get([
+    'githubUsername',
+    'githubPAT',
   ]);
+  const { lastSyncTimestamp, lastSyncError, prCount, rateLimitBlocked, rateLimitReset } =
+    await chrome.storage.local.get([
+      'lastSyncTimestamp',
+      'lastSyncError',
+      'prCount',
+      'rateLimitBlocked',
+      'rateLimitReset',
+    ]);
 
   // Statut de connexion
   if (!githubUsername || !githubPAT) {

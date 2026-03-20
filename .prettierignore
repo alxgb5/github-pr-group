@@ -1,0 +1,5 @@
+node_modules/
+*.zip
+eslint-report.json
+package-lock.json
+docs/

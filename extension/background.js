@@ -1,6 +1,8 @@
 // background.js — Service Worker (Manifest V3)
 // Toutes les opérations sont asynchrones et sans état persistant en mémoire.
 
+import { normalizeUrl, repoFromHtmlUrl, isoDateDaysAgo, formatResetTime } from './utils.js';
+
 const ALARM_NAME = 'pr-sync';
 const ALARM_PERIOD_MINUTES = 2;
 const GROUP_TITLE = 'Pull Requests';
@@ -11,26 +13,6 @@ const GITHUB_API = 'https://api.github.com';
 const groupTabsCache = new Map();
 // IDs des onglets qu'on ferme nous-mêmes (à ignorer dans onRemoved)
 const selfRemovedTabIds = new Set();
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Normalise une URL : retire le trailing slash et ignore les query params. */
-function normalizeUrl(url) {
-  try {
-    const u = new URL(url);
-    // Retire le trailing slash du pathname
-    u.pathname = u.pathname.replace(/\/+$/, '');
-    // Ignore les query params et le hash
-    return `${u.origin}${u.pathname}`.toLowerCase();
-  } catch {
-    return url.replace(/\/+$/, '').toLowerCase();
-  }
-}
-
-/** Formate un timestamp Unix (secondes) en heure locale. */
-function formatResetTime(unixSeconds) {
-  return new Date(unixSeconds * 1000).toLocaleTimeString();
-}
 
 // ─── GitHub API ──────────────────────────────────────────────────────────────
 
@@ -56,7 +38,9 @@ async function githubFetch(path, pat) {
   if (response.status === 403 || response.status === 429) {
     // Backoff : on mémorise le timestamp de reset
     await chrome.storage.local.set({ rateLimitBlocked: true, rateLimitReset });
-    throw new Error(`Rate limit hit (${response.status}). Retry at ${formatResetTime(rateLimitReset)}`);
+    throw new Error(
+      `Rate limit hit (${response.status}). Retry at ${formatResetTime(rateLimitReset)}`,
+    );
   }
 
   if (!response.ok) {
@@ -66,32 +50,15 @@ async function githubFetch(path, pat) {
   // Dès qu'on a une réponse valide, on lève le flag de blocage si < 5 restants
   if (rateLimitRemaining < 5) {
     await chrome.storage.local.set({ rateLimitBlocked: true, rateLimitReset });
-    throw new Error(`Rate limit low (${rateLimitRemaining} remaining). Retry at ${formatResetTime(rateLimitReset)}`);
+    throw new Error(
+      `Rate limit low (${rateLimitRemaining} remaining). Retry at ${formatResetTime(rateLimitReset)}`,
+    );
   } else {
     await chrome.storage.local.set({ rateLimitBlocked: false });
   }
 
   const data = await response.json();
   return { data, rateLimitRemaining, rateLimitReset };
-}
-
-/** Retourne la date ISO d'il y a N jours (pour le filtre created:>=). */
-function isoDateDaysAgo(days) {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().split('T')[0]; // YYYY-MM-DD
-}
-
-/** Extrait "owner/repo" depuis une html_url GitHub (ex: https://github.com/owner/repo/pull/1). */
-function repoFromHtmlUrl(htmlUrl) {
-  try {
-    const parts = new URL(htmlUrl).pathname.split('/').filter(Boolean);
-    // ['owner', 'repo', 'pull', '123']
-    if (parts.length >= 2) return `${parts[0]}/${parts[1]}`.toLowerCase();
-  } catch {
-    // Invalid URL — return null
-  }
-  return null;
 }
 
 /**
@@ -104,7 +71,11 @@ function repoFromHtmlUrl(htmlUrl) {
  * @param {string} pat
  * @param {{ excludedRepos: string[], excludeDependabot: boolean, dismissedUrls: string[] }} filters
  */
-async function fetchPullRequestUrls(username, pat, { excludedRepos = [], excludeDependabot = false, dismissedUrls = [] } = {}) {
+async function fetchPullRequestUrls(
+  username,
+  pat,
+  { excludedRepos = [], excludeDependabot = false, dismissedUrls = [] } = {},
+) {
   const since = isoDateDaysAgo(14);
   const query = `/search/issues?q=is:open+is:pr+review-requested:${encodeURIComponent(username)}+created:>=${since}&per_page=10&sort=created&order=desc`;
 
@@ -115,7 +86,7 @@ async function fetchPullRequestUrls(username, pat, { excludedRepos = [], exclude
     const { data } = await githubFetch(query, pat);
     const urlSet = new Set();
 
-    for (const item of (data.items ?? [])) {
+    for (const item of data.items ?? []) {
       if (!item.html_url) continue;
 
       // Filtre dependabot
@@ -214,7 +185,11 @@ async function resolveStoredGroupId(windowId) {
 async function createPRGroup(windowId, color, firstUrl) {
   const tab = await chrome.tabs.create({ windowId, url: firstUrl, active: false });
   const groupId = await chrome.tabs.group({ tabIds: [tab.id], createProperties: { windowId } });
-  await chrome.tabGroups.update(groupId, { title: GROUP_TITLE, color: color ?? 'blue', collapsed: false });
+  await chrome.tabGroups.update(groupId, {
+    title: GROUP_TITLE,
+    color: color ?? 'blue',
+    collapsed: false,
+  });
   await chrome.storage.session.set({ prGroupId: groupId });
   return { groupId, firstTabId: tab.id };
 }
@@ -227,7 +202,13 @@ async function syncPullRequests() {
 
   // ── 1. Lecture de la config ──────────────────────────────────────────────
   const { githubUsername, githubPAT, groupColor, excludedRepos, excludeDependabot } =
-    await chrome.storage.sync.get(['githubUsername', 'githubPAT', 'groupColor', 'excludedRepos', 'excludeDependabot']);
+    await chrome.storage.sync.get([
+      'githubUsername',
+      'githubPAT',
+      'groupColor',
+      'excludedRepos',
+      'excludeDependabot',
+    ]);
 
   const { dismissedUrls = [] } = await chrome.storage.local.get('dismissedUrls');
 

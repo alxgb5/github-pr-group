@@ -7,7 +7,7 @@ export default [
     files: ['extension/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'script', // MV3 service workers are classic scripts, not ES modules
+      sourceType: 'module', // All extension scripts are ES modules (background type:module, popup/options use type=module)
       globals: {
         ...globals.browser,
         chrome: 'readonly',
@@ -15,10 +15,10 @@ export default [
     },
     rules: {
       'no-unused-vars': 'warn',
-      'no-undef':       'error',
-      'no-console':     'off',
-      'eqeqeq':         'error',
-      'prefer-const':   'error',
+      'no-undef': 'error',
+      'no-console': 'off',
+      eqeqeq: 'error',
+      'prefer-const': 'error',
     },
   },
 ];

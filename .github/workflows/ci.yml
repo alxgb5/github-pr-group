@@ -83,7 +83,7 @@ jobs:
             const manifest = JSON.parse(
               require('fs').readFileSync('extension/manifest.json', 'utf8')
             );
-            const ALLOWED = new Set(['tabs', 'tabGroups', 'storage', 'alarms']);
+            const ALLOWED = new Set(['tabs', 'tabGroups', 'storage', 'alarms', 'windows']);
             const declared = manifest.permissions ?? [];
             const illegal  = declared.filter(p => !ALLOWED.has(p));
 
@@ -127,8 +127,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: 🔍 Install ESLint dependencies
-        run: npm install
+      - name: 🔍 Install dependencies
+        run: npm ci
 
       - name: 🔍 Run ESLint — generate JSON report
         # Allow failure here so the artifact is always produced
@@ -137,6 +137,7 @@ jobs:
             extension/background.js \
             extension/options.js \
             extension/popup.js \
+            extension/utils.js \
             --format json \
             --output-file eslint-report.json \
           || true
@@ -147,7 +148,8 @@ jobs:
           npx eslint \
             extension/background.js \
             extension/options.js \
-            extension/popup.js
+            extension/popup.js \
+            extension/utils.js
 
       - name: 🔍 Upload ESLint report as artifact
         if: always() # Upload even when linting fails
@@ -213,11 +215,56 @@ jobs:
           "
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Job 4 — Build and verify the production zip
+  # Job 4 — Unit tests (parallel with lint / security-scan)
+  # ────────────────────────────────────────────────────────────────────────────
+  test:
+    name: 🧪 Tests
+    needs: validate-manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 🧪 Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: 🧪 Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+
+      - name: 🧪 Run unit tests
+        run: node --test tests/utils.test.js
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 5 — Prettier format check (parallel with lint / security-scan)
+  # ────────────────────────────────────────────────────────────────────────────
+  format:
+    name: 💅 Format Check
+    needs: validate-manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 💅 Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: 💅 Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+
+      - name: 💅 Install dependencies
+        run: npm ci
+
+      - name: 💅 Check formatting
+        run: npm run format:check
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 6 — Build and verify the production zip
   # ────────────────────────────────────────────────────────────────────────────
   build-artifact:
     name: 📦 Build Artifact
-    needs: [validate-manifest, lint, security-scan]
+    needs: [validate-manifest, lint, security-scan, test, format]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
