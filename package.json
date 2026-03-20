@@ -1,0 +1,17 @@
+{
+  "name": "github-pr-group",
+  "version": "1.0.0",
+  "description": "Chrome extension (MV3) that automatically groups review-requested GitHub PRs in a tab group",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "lint": "eslint extension/background.js extension/options.js extension/popup.js",
+    "lint:fix": "eslint extension/background.js extension/options.js extension/popup.js --fix",
+    "lint:report": "eslint extension/background.js extension/options.js extension/popup.js --format json --output-file eslint-report.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0"
+  }
+}

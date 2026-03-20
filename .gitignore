@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+*.zip
+dist/
+
+# ESLint reports
+eslint-report.json
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude
+.claude/
+
+# npm lockfile (not committed — single-maintainer project with no CI npm ci)
+# Remove this line if you add package-lock.json
+package-lock.json

@@ -9,7 +9,6 @@ on:
 permissions:
   contents: read
   security-events: write
-  pull-requests: write
 
 jobs:
   # ────────────────────────────────────────────────────────────────────────────
@@ -128,40 +127,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: 🔍 Bootstrap package.json with ESM support
-        run: echo '{"type":"module"}' > package.json
-
-      - name: 🔍 Install ESLint and plugins
-        run: npm install --save-dev eslint @eslint/js globals
-
-      - name: 🔍 Write ESLint flat config
-        run: |
-          cat > eslint.config.js << 'ESLINTEOF'
-          import js from '@eslint/js';
-          import globals from 'globals';
-
-          export default [
-            js.configs.recommended,
-            {
-              files: ['extension/**/*.js'],
-              languageOptions: {
-                ecmaVersion: 2022,
-                sourceType: 'script', // MV3 service workers are classic scripts
-                globals: {
-                  ...globals.browser,
-                  chrome: 'readonly', // Chrome extension API
-                },
-              },
-              rules: {
-                'no-unused-vars': 'warn',
-                'no-undef':       'error',
-                'no-console':     'off',
-                'eqeqeq':         'error',
-                'prefer-const':   'error',
-              },
-            },
-          ];
-          ESLINTEOF
+      - name: 🔍 Install ESLint dependencies
+        run: npm install
 
       - name: 🔍 Run ESLint — generate JSON report
         # Allow failure here so the artifact is always produced
