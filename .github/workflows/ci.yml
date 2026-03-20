@@ -173,12 +173,12 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: 🔒 Initialize CodeQL
-        uses: github/codeql-action/init@bd726e2a6ef9fb1305ebd28a690e459525916958 # v3.29.1
+        uses: github/codeql-action/init@39edc492dbe16b1465b0cafca41432d857bdb31a # v3.29.1
         with:
           languages: javascript
 
       - name: 🔒 Run CodeQL analysis
-        uses: github/codeql-action/analyze@bd726e2a6ef9fb1305ebd28a690e459525916958 # v3.29.1
+        uses: github/codeql-action/analyze@39edc492dbe16b1465b0cafca41432d857bdb31a # v3.29.1
         with:
           category: "/language:javascript"
 
