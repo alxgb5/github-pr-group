@@ -1,5 +1,11 @@
 # GitHub PR Group
 
+[![CI](https://github.com/alxgb5/github-pr-group/actions/workflows/ci.yml/badge.svg)](https://github.com/alxgb5/github-pr-group/actions/workflows/ci.yml)
+[![Release](https://github.com/alxgb5/github-pr-group/actions/workflows/release.yml/badge.svg)](https://github.com/alxgb5/github-pr-group/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/alxgb5/github-pr-group)](https://github.com/alxgb5/github-pr-group/releases/latest)
+[![Manifest V3](https://img.shields.io/badge/Manifest-V3-1f883d)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+
 A Chrome extension that automatically groups your GitHub Pull Requests into a single tab group — so you always know what needs your review.
 
 ![GitHub PR Group](docs/assets/banner.svg)
