@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub PR Group — Chrome Extension</title>
+  <meta name="description" content="A Chrome extension that automatically groups your GitHub review-requested Pull Requests into a tab group." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #1f883d;
+      --green-light: #2da44e;
+      --green-muted: #dafbe1;
+      --blue: #1f6feb;
+      --blue-light: #388bfd;
+      --accent: #58a6ff;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,17,23,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 56px;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo svg { flex-shrink: 0; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: 14px;
+    }
+
+    .nav-links a { color: var(--muted); transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid;
+      transition: background 0.15s, border-color 0.15s;
+      text-decoration: none !important;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      border-color: #238636;
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--green-light); }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-ghost:hover { background: #21262d; }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 96px 24px 72px;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(31,136,61,0.15);
+      border: 1px solid rgba(31,136,61,0.4);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #3fb950;
+      margin-bottom: 24px;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #3fb950;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 56px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #e6edf3 30%, #8b949e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 540px;
+      margin: 0 auto 40px;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Browser mockup ── */
+    .mockup-wrap {
+      max-width: 860px;
+      margin: 0 auto 96px;
+      padding: 0 24px;
+    }
+
+    .browser {
+      background: #1c2128;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+
+    .browser-bar {
+      background: #2d333b;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dots { display: flex; gap: 6px; }
+    .dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+    }
+    .dot-red    { background: #ff5f57; }
+    .dot-yellow { background: #febc2e; }
+    .dot-green  { background: #28c840; }
+
+    .url-bar {
+      flex: 1;
+      background: #161b22;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    /* Tab strip */
+    .tab-strip {
+      background: #161b22;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      padding: 8px 12px 0;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px 6px 0 0;
+      font-size: 12px;
+      white-space: nowrap;
+      color: var(--muted);
+      background: #2d333b;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      cursor: default;
+      flex-shrink: 0;
+    }
+
+    .tab.active {
+      background: #1c2128;
+      color: var(--text);
+    }
+
+    .tab-group-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #fff;
+      background: #1f6feb;
+      border-radius: 4px 4px 0 0;
+      padding: 3px 10px;
+      align-self: flex-end;
+      flex-shrink: 0;
+    }
+
+    .tab-gh-icon {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* PR list inside browser */
+    .browser-content {
+      padding: 28px 32px;
+      min-height: 200px;
+    }
+
+    .pr-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pr-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: border-color 0.15s;
+    }
+
+    .pr-item:hover { border-color: #58a6ff44; }
+
+    .pr-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .pr-body { flex: 1; min-width: 0; }
+
+    .pr-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .pr-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pr-labels {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .label {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 12px;
+      border: 1px solid;
+    }
+
+    .label-review { color: #e3b341; border-color: #e3b34140; background: #e3b34110; }
+    .label-feat   { color: #58a6ff; border-color: #58a6ff40; background: #58a6ff10; }
+    .label-bug    { color: #ff7b72; border-color: #ff7b7240; background: #ff7b7210; }
+
+    /* ── Features grid ── */
+    section {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px 96px;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    section h2 {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 16px;
+      margin-bottom: 56px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: #388bfd66;
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 20px;
+    }
+
+    .feature-card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── How it works ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .step {
+      display: flex;
+      gap: 20px;
+      padding-bottom: 36px;
+      position: relative;
+    }
+
+    .step:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 40px;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .step-content { padding-top: 8px; }
+    .step-content h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .step-content p { font-size: 14px; color: var(--muted); }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.88em;
+      background: #2d333b;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    /* ── Install ── */
+    .install-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .install-box h2 { font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+    .install-box p  { color: var(--muted); margin-bottom: 28px; font-size: 15px; }
+
+    .install-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: left;
+      margin-bottom: 32px;
+    }
+
+    .install-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .install-step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      nav { padding: 0 16px; }
+      .nav-links { gap: 12px; }
+      .hero { padding: 64px 16px 48px; }
+      .browser-content { padding: 16px; }
+      .install-box { padding: 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ─────────────────────────────────────────────────────────────────── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <svg width="22" height="22" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="10" fill="#1f883d"/>
+      <circle cx="13" cy="13" r="4.5" fill="#fff"/>
+      <line x1="13" y1="17.5" x2="13" y2="30.5" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="13" cy="35" r="4.5" fill="#fff"/>
+      <circle cx="35" cy="24" r="4.5" fill="#fff"/>
+      <line x1="35" y1="19.5" x2="35" y2="13" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M30 17 L35 11 L40 17" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M17.5 24 Q24 24 30.5 24" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </svg>
+    GitHub PR Group
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/alxgb5/github-pr-group" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="hero-badge">Open source · Manifest V3 · Zero dependencies</div>
+  <h1>Your review queue,<br/>always open.</h1>
+  <p>A Chrome extension that automatically groups your GitHub Pull Requests into a dedicated tab group — in sync with the API, in the background, without interrupting you.</p>
+  <div class="hero-actions">
+    <a href="https://github.com/alxgb5/github-pr-group" class="btn btn-primary" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View on GitHub
+    </a>
+    <a href="#install" class="btn btn-ghost">Installation guide →</a>
+  </div>
+</div>
+
+<!-- ── Browser mockup ────────────────────────────────────────────────────────── -->
+<div class="mockup-wrap">
+  <div class="browser">
+    <div class="browser-bar">
+      <div class="dots">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+      </div>
+      <div class="url-bar">github.com/org/repo/pull/428</div>
+    </div>
+
+    <div class="tab-strip">
+      <!-- Regular tabs -->
+      <div class="tab">
+        <svg class="tab-gh-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </div>
+      <!-- PR Group tabs -->
+      <div class="tab-group-label">Pull Requests</div>
+      <div class="tab active">
+        <svg class="tab-gh-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.507a.25.25 0 010-.434zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+        feat: add dark mode support
+      </div>
+      <div class="tab">
+        <svg class="tab-gh-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.507a.25.25 0 010-.434zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+        fix: null pointer on empty state
+      </div>
+      <div class="tab">
+        <svg class="tab-gh-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.507a.25.25 0 010-.434zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+        refactor: migrate to new API
+      </div>
+    </div>
+
+    <div class="browser-content">
+      <div class="pr-list">
+        <div class="pr-item">
+          <svg class="pr-icon" viewBox="0 0 16 16" fill="#3fb950" xmlns="http://www.w3.org/2000/svg"><path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.507a.25.25 0 010-.434zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+          <div class="pr-body">
+            <div class="pr-title">feat: add dark mode support across all components</div>
+            <div class="pr-meta">org/frontend · opened 3 hours ago by alice</div>
+            <div class="pr-labels">
+              <span class="label label-review">review requested</span>
+              <span class="label label-feat">enhancement</span>
+            </div>
+          </div>
+        </div>
+        <div class="pr-item">
+          <svg class="pr-icon" viewBox="0 0 16 16" fill="#3fb950" xmlns="http://www.w3.org/2000/svg"><path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.507a.25.25 0 010-.434zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+          <div class="pr-body">
+            <div class="pr-title">fix: null pointer exception on empty state initialization</div>
+            <div class="pr-meta">org/backend · opened 1 day ago by bob</div>
+            <div class="pr-labels">
+              <span class="label label-review">review requested</span>
+              <span class="label label-bug">bug</span>
+            </div>
+          </div>
+        </div>
+        <div class="pr-item">
+          <svg class="pr-icon" viewBox="0 0 16 16" fill="#3fb950" xmlns="http://www.w3.org/2000/svg"><path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.507a.25.25 0 010-.434zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+          <div class="pr-body">
+            <div class="pr-title">refactor: migrate auth layer to new token API</div>
+            <div class="pr-meta">org/backend · opened 2 days ago by carol</div>
+            <div class="pr-labels">
+              <span class="label label-review">review requested</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Features ──────────────────────────────────────────────────────────────── -->
+<section id="features">
+  <div class="section-label">Features</div>
+  <h2>Everything you need, nothing you don't</h2>
+  <p class="section-sub">Built to stay out of your way while keeping your review queue visible.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#1f883d22;">🔄</div>
+      <h3>Automatic sync</h3>
+      <p>Polls the GitHub API every 2 minutes using <code>chrome.alarms</code> — the only MV3-compliant way to run background tasks reliably without a persistent service worker.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#1f6feb22;">🗂️</div>
+      <h3>Smart reconciliation</h3>
+      <p>New PRs get a tab. Merged or closed PRs have their tab removed. PRs you're actively reading are never force-closed — just ungrouped if the PR disappears.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#a371f722;">🙈</div>
+      <h3>Permanent dismiss</h3>
+      <p>Close a tab from the group manually and that PR is gone for good — it will never be re-opened by a future sync. Reset anytime from the Options page.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#e3b34122;">🤖</div>
+      <h3>Dependabot filter</h3>
+      <p>One checkbox to hide all PRs opened by <code>dependabot[bot]</code>. Your review queue, not a bot queue.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#ff7b7222;">🚫</div>
+      <h3>Repo exclusions</h3>
+      <p>Block entire repositories from appearing in the group. Add them as <code>owner/repo</code>, one per line. Useful for noisy monorepos or low-priority projects.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#58a6ff22;">⚡</div>
+      <h3>Rate limit aware</h3>
+      <p>Reads <code>X-RateLimit-Remaining</code> on every response. On 403 or 429, backs off automatically until the reset timestamp, then resumes.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#3fb95022;">📅</div>
+      <h3>Recency filter</h3>
+      <p>Shows only the 10 most recent PRs opened in the last 2 weeks. Keeps the group focused on what's actually pending, not a backlog from months ago.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:#e85aad22;">🎨</div>
+      <h3>Custom group color</h3>
+      <p>Pick from Chrome's 8 tab group colors to make your PR group stand out — or blend in — with the rest of your workspace.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ───────────────────────────────────────────────────────────── -->
+<section id="how-it-works">
+  <div class="section-label">How it works</div>
+  <h2>Under the hood</h2>
+  <p class="section-sub">No magic — just a clean polling loop and a deterministic reconciliation algorithm.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <h3>Alarm fires every 2 minutes</h3>
+        <p><code>chrome.alarms</code> wakes up the service worker. Since MV3 service workers are ephemeral, <code>setInterval</code> doesn't survive — alarms do.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <h3>GitHub Search API is queried</h3>
+        <p>One request: <code>is:open is:pr review-requested:{you} created:>={2 weeks ago}</code>, sorted by most recent, capped at 10 results.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <h3>Filters are applied client-side</h3>
+        <p>Dependabot PRs, excluded repos, and permanently dismissed URLs are stripped from the result set before reconciliation.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-number">4</div>
+      <div class="step-content">
+        <h3>The tab group is reconciled</h3>
+        <p>URLs in the API but not in the group → new tab opened. URLs in the group but not in the API → tab closed (unless it's the active tab, in which case it's just ungrouped).</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-number">5</div>
+      <div class="step-content">
+        <h3>The cache is updated</h3>
+        <p>An in-memory map of <code>tabId → URL</code> is rebuilt after every sync. This lets <code>chrome.tabs.onRemoved</code> detect manual closes and persist them as dismissals.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Install ────────────────────────────────────────────────────────────────── -->
+<section id="install">
+  <div class="install-box">
+    <h2>Install in 60 seconds</h2>
+    <p>The extension isn't on the Chrome Web Store. Load it directly from the source — it takes less than a minute.</p>
+    <div class="install-steps">
+      <div class="install-step"><div class="install-step-num">1</div><span>Clone or download this repository</span></div>
+      <div class="install-step"><div class="install-step-num">2</div><span>Open <code>chrome://extensions</code> in Chrome</span></div>
+      <div class="install-step"><div class="install-step-num">3</div><span>Enable <strong>Developer mode</strong> (top right toggle)</span></div>
+      <div class="install-step"><div class="install-step-num">4</div><span>Click <strong>Load unpacked</strong> and select the <code>extension/</code> folder</span></div>
+      <div class="install-step"><div class="install-step-num">5</div><span>Open Options and add your GitHub username + PAT</span></div>
+    </div>
+    <a href="https://github.com/alxgb5/github-pr-group" class="btn btn-primary" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      Get the source on GitHub
+    </a>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────────── -->
+<footer>
+  <p>
+    Open source under the MIT License ·
+    <a href="https://github.com/alxgb5/github-pr-group" target="_blank" rel="noopener">GitHub</a> ·
+    <a href="https://github.com/alxgb5/github-pr-group/issues" target="_blank" rel="noopener">Report an issue</a>
+  </p>
+</footer>
+
+</body>
+</html>
