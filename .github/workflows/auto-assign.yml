@@ -1,0 +1,26 @@
+name: Auto-assign PR
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  assign:
+    name: 👤 Auto-assign reviewer and assignee
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 👤 Assign @alxgb5 as assignee
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              assignees: ['alxgb5'],
+            });
+            core.info('✅ Assigned @alxgb5 as assignee');
