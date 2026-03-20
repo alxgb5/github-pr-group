@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: ✅ Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: ✅ Validate JSON syntax
         run: |
@@ -121,10 +121,10 @@ jobs:
 
     steps:
       - name: 🔍 Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: 🔍 Setup Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
 
@@ -184,7 +184,7 @@ jobs:
 
       - name: 🔍 Upload ESLint report as artifact
         if: always() # Upload even when linting fails
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: eslint-report
           path: eslint-report.json
@@ -201,17 +201,17 @@ jobs:
 
     steps:
       - name: 🔒 Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: 🔒 Initialize CodeQL
-        uses: github/codeql-action/init@cdcdbb579706841c47f7063dda365e292e5cad7a # v3.26.0
+        uses: github/codeql-action/init@bd726e2a6ef9fb1305ebd28a690e459525916958 # v3.29.1
         with:
           languages: javascript
           # No build needed — vanilla JS, no compilation step
           build-mode: none
 
       - name: 🔒 Run CodeQL analysis
-        uses: github/codeql-action/analyze@cdcdbb579706841c47f7063dda365e292e5cad7a # v3.26.0
+        uses: github/codeql-action/analyze@bd726e2a6ef9fb1305ebd28a690e459525916958 # v3.29.1
         with:
           category: "/language:javascript"
 
@@ -258,7 +258,7 @@ jobs:
 
     steps:
       - name: 📦 Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: 📦 Create production zip
         run: |
@@ -295,7 +295,7 @@ jobs:
           echo "ZIP_SIZE_MB=${SIZE_MB}" >> "$GITHUB_ENV"
 
       - name: 📦 Upload zip as GitHub artifact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: github-pr-group-${{ needs.validate-manifest.outputs.version }}
           path: ${{ env.ZIP_NAME }}
